@@ -2,15 +2,54 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom CSS Variables */
+:root {
+  --primary-gradient: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+  --danger-gradient: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  --warning-gradient: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+/* Base styles */
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 /* Leaflet map styles */
 .leaflet-container {
   height: 100%;
   width: 100%;
+  border-radius: 0.5rem;
 }
 
-/* Custom styles */
+@media (max-width: 1024px) {
+  .leaflet-container {
+    border-radius: 0;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Custom components */
 .risk-card {
-  @apply bg-white rounded-lg shadow-md p-4 border-l-4;
+  @apply bg-white rounded-lg shadow-md p-4 border-l-4 transition-all duration-200 hover:shadow-lg;
 }
 
 .risk-low { @apply border-green-500; }
@@ -19,5 +58,80 @@
 .risk-very-high { @apply border-red-500; }
 
 .alert-toast {
-  @apply fixed top-4 right-4 bg-red-600 text-white p-4 rounded-lg shadow-lg z-50;
+  @apply fixed top-4 right-4 bg-red-600 text-white p-4 rounded-lg shadow-lg z-50 animate-pulse;
+}
+
+/* Gradient backgrounds */
+.bg-primary-gradient {
+  background: var(--primary-gradient);
+}
+
+.bg-danger-gradient {
+  background: var(--danger-gradient);
+}
+
+.bg-warning-gradient {
+  background: var(--warning-gradient);
+}
+
+/* Loading animation */
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .leaflet-control-container {
+    font-size: 14px;
+  }
+  
+  .leaflet-popup-content {
+    margin: 8px 12px;
+    line-height: 1.4;
+  }
+}
+
+/* Focus styles for accessibility */
+button:focus,
+input:focus,
+select:focus {
+  @apply outline-none ring-2 ring-blue-500 ring-opacity-50;
+}
+
+/* Custom range slider */
+input[type="range"] {
+  @apply appearance-none bg-gray-200 rounded-lg h-2 cursor-pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  @apply appearance-none w-5 h-5 bg-blue-600 rounded-full cursor-pointer shadow-md;
+}
+
+input[type="range"]::-moz-range-thumb {
+  @apply w-5 h-5 bg-blue-600 rounded-full cursor-pointer border-0 shadow-md;
+}
+
+/* Card hover effects */
+.hover-lift {
+  @apply transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg;
+}
+
+/* Status indicators */
+.status-online {
+  @apply bg-green-500;
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.2);
+}
+
+.status-offline {
+  @apply bg-red-500;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2);
 }

@@ -38,7 +38,7 @@ export const Admin: React.FC = () => {
 
   const fetchMetrics = async () => {
     try {
-      const response = await fetch('http://localhost:8080/v1/metrics/json');
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/v1/metrics/json`);
       if (response.ok) {
         const data = await response.json();
         setMetrics(data.metrics);
@@ -63,9 +63,9 @@ export const Admin: React.FC = () => {
 
   const triggerIngestion = async (source: string) => {
     try {
-      const response = await fetch(`http://localhost:8080/v1/ingest/${source}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/v1/ingest/${source}`, {
         method: 'POST',
-        headers: { 'Authorization': 'Bearer test-token-123' }
+        headers: { 'Authorization': `Bearer ${import.meta.env.VITE_INGEST_TOKEN || 'demo-token'}` }
       });
       
       if (response.ok) {
