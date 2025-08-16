@@ -75,7 +75,7 @@ export const Home: React.FC = () => {
   const fetchRiskData = async () => {
     try {
       const [lat, lng] = userLocation;
-      const response = await fetch(`http://localhost:8080/v1/risk/now?lat=${lat}&lng=${lng}&radius_km=${radius}`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/v1/risk/now?lat=${lat}&lng=${lng}&radius_km=${radius}`);
       if (response.ok) {
         const data = await response.json();
         setRiskData(data.risk_assessment);
