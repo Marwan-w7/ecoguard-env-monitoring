@@ -16,7 +16,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [notifications, setNotifications] = useState<any[]>([]);
 
   useEffect(() => {
-    const newSocket = io((import.meta as any).env.VITE_API_URL || 'http://localhost:3000');
+    const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:3000');
     
     newSocket.on('connect', () => {
       setIsConnected(true);
@@ -59,7 +59,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const subscribe = async (location: { lat: number; lng: number }, radius: number) => {
     try {
-      const response = await fetch(`${(import.meta as any).env.VITE_API_URL || 'http://localhost:3000'}/v1/subscriptions`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/v1/subscriptions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

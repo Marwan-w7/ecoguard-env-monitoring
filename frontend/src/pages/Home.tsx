@@ -62,7 +62,7 @@ export const Home: React.FC = () => {
   const fetchEvents = async () => {
     try {
       const [lat, lng] = userLocation;
-      const response = await fetch(`http://localhost:8080/v1/events/near/${lat}/${lng}?radius_km=100&limit=20`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/v1/events/near/${lat}/${lng}?radius_km=100&limit=20`);
       if (response.ok) {
         const data = await response.json();
         setEvents(data.events || []);

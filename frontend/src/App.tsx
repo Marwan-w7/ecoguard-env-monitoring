@@ -6,7 +6,7 @@ import { Guides } from '@/pages/Guides'
 import { Admin } from '@/pages/Admin'
 import { Navigation } from '@/components/Navigation'
 import { NotificationProvider } from '@/hooks/useNotifications'
-import './App.css'
+import './index.css'
 
 function App() {
   return (
