@@ -113,8 +113,7 @@ export const Home: React.FC = () => {
 
   const fetchAirQuality = async () => {
     try {
-      const [lat, lng] = userLocation;
-      // Mock air quality data
+      // Mock air quality data based on location
       setAirQuality({
         aqi: Math.floor(Math.random() * 150) + 50,
         pm25: Math.floor(Math.random() * 50) + 10,
@@ -130,8 +129,7 @@ export const Home: React.FC = () => {
 
   const fetchWeather = async () => {
     try {
-      const [lat, lng] = userLocation;
-      // Mock weather data
+      // Mock weather data based on location
       setWeather({
         temperature: Math.floor(Math.random() * 15) + 20,
         humidity: Math.floor(Math.random() * 40) + 40,
@@ -232,9 +230,8 @@ export const Home: React.FC = () => {
 
           <div className="p-4 lg:p-6 space-y-6">
             {/* Connection Status */}
-            <div className={`flex items-center space-x-2 p-3 rounded-lg ${
-              isConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-            }`}>
+            <div className={`flex items-center space-x-2 p-3 rounded-lg ${isConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+              }`}>
               <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
               <span className="font-medium">{isConnected ? 'Connected' : 'Disconnected'}</span>
             </div>
@@ -407,7 +404,7 @@ export const Home: React.FC = () => {
 
         {/* Mobile Overlay */}
         {sidebarOpen && (
-          <div 
+          <div
             className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-20"
             onClick={() => setSidebarOpen(false)}
           />
@@ -423,7 +420,7 @@ export const Home: React.FC = () => {
               </div>
             </div>
           )}
-          
+
           <MapContainer
             center={userLocation}
             zoom={10}
@@ -434,7 +431,7 @@ export const Home: React.FC = () => {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             />
-            
+
             {/* User location */}
             <Marker position={userLocation}>
               <Popup>
@@ -453,13 +450,13 @@ export const Home: React.FC = () => {
                 </div>
               </Popup>
             </Marker>
-            
+
             {/* Alert radius */}
             <Circle
               center={userLocation}
               radius={radius * 1000}
-              pathOptions={{ 
-                color: '#3B82F6', 
+              pathOptions={{
+                color: '#3B82F6',
                 fillColor: '#3B82F6',
                 fillOpacity: 0.1,
                 weight: 2
