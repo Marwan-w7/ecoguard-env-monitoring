@@ -1,0 +1,1509 @@
+An **alert system for environmental disasters** could actually be a *very strong portfolio project* — it blends real-time data ingestion, predictive analytics, and user-facing notifications, which makes it both technically impressive and socially impactful.
+
+Here’s how it could look:
+
+---
+
+## 🌍 **EcoGuard: AI-Powered Environmental Disaster Alert System**
+
+**One-Sentence Description**
+A multi-channel early warning platform that monitors environmental data in real time, predicts disaster risks using AI, and sends geotargeted alerts to individuals and organizations.
+
+---
+
+### **Real-World Use Case**
+
+* Many regions face floods, wildfires, air pollution spikes, or extreme weather without enough early warning.
+* EcoGuard pulls live data from satellites, weather APIs, seismic sensors, and air-quality monitors, predicts risks, and instantly alerts nearby populations through SMS, mobile push notifications, and web updates.
+
+---
+
+### **Full Tech Stack**
+
+**Data Ingestion**
+
+* Python scripts with **APIs** (OpenWeatherMap, NASA Earthdata, USGS Earthquake API, Copernicus Sentinel)
+* **Kafka** or AWS Kinesis for streaming sensor data
+* Optional: **IoT integration** for on-ground sensors
+
+**Backend & Processing**
+
+* Node.js / Python (FastAPI) for REST APIs
+* AWS Lambda for serverless processing of incoming alerts
+* DynamoDB / PostgreSQL for storing event history
+* AI models (e.g., XGBoost, LSTM) for predictive disaster modeling
+
+**AI/ML**
+
+* **Flood prediction** using rainfall + river gauge data
+* **Wildfire risk scoring** from satellite thermal imagery
+* **Air quality prediction** using regression models
+* ML pipeline in AWS SageMaker
+
+**Frontend & Notification**
+
+* React.js dashboard with Mapbox or Leaflet.js for live maps
+* Progressive Web App (PWA) for mobile users
+* WebSocket for instant updates
+* Twilio / AWS SNS for SMS & push alerts
+
+**Analytics**
+
+* Plotly or Grafana for visualizing disaster trends
+* Risk heatmaps & historical data charts
+
+---
+
+### **Advanced Features**
+
+* **Geofenced Alerts:** Only warn users within affected zones
+* **Multi-Language Support:** Auto-translate alerts for local communities
+* **User Feedback Loop:** Citizens can report on-the-ground conditions with images
+* **AI Confidence Score:** Shows how certain the system is about a prediction
+* **Offline Mode:** Store latest data in PWA for areas with poor connectivity
+
+---
+
+### **Resume Pitch**
+
+> “Developed EcoGuard, an AI-powered disaster early warning system that integrates live sensor and satellite data, predicts environmental risks with ML models, and delivers geotargeted alerts through SMS, push notifications, and an interactive map dashboard. Combines data engineering, real-time processing, predictive analytics, and UX design.”
+
+---
+
+If you want, I can also make you a **side-by-side comparison** between this and your **AI-Phish Guardian** idea so you can see which would be more technically impressive for cybersecurity-focused employers.
+
+Do you want me to do that comparison?
+Awesome — here’s a complete, plug-and-play breakdown for an **environmental disaster alert system** you can actually build, demo, and put on your CV. I’ll keep it practical, with an MVP you can finish fast, plus stretch goals if you have more time.
+
+# EcoGuard: Environmental Disaster Early Warning & Alerts
+
+## 1) Problem, Users, and Impact
+
+* **Problem:** Populations get late or noisy alerts about floods, haze/air-quality spikes, earthquakes, or severe weather.
+* **Primary users:** Residents, NGOs/first responders, schools, local businesses.
+* **Value:** Geotargeted, trustworthy alerts + short “what to do now” guidance, visible risk trends, and a public status map.
+
+## 2) System Overview (What you’ll build)
+
+* **Data ingestion:** Pull from public APIs (weather, AQI, earthquakes), and optional low-cost IoT sensors.
+* **Risk engine:** Compute per-area risk scores; run simple rules + ML model (later).
+* **Alerting:** Send push/SMS/email only to people inside affected polygons/buffers.
+* **Dashboard:** Live map (React + Mapbox/Leaflet) with risk layers & timelines.
+* **Mobile PWA:** Lightweight app; works offline with last known guidance.
+
+## 3) Tech Stack (sane, student-friendly)
+
+* **Frontend:** React + Vite, Mapbox GL JS (or Leaflet), PWA (Workbox).
+* **Backend API:** Node.js + Fastify/Express (TypeScript recommended).
+* **Streaming/Jobs:** Serverless cron with AWS EventBridge → AWS Lambda.
+* **Storage:**
+
+  * Hot: DynamoDB (events, alerts, subscriptions)
+  * Geo: PostGIS on a small RDS (optional) *or* simple GeoJSON in S3
+* **Notifications:** AWS SNS (SMS/email), Web Push (VAPID), in-app toasts via WebSocket (Socket.IO).
+* **Auth:** Cognito (hosted UI) or Auth0 free tier.
+* **Infra as code:** Terraform or CloudFormation.
+* **ML (optional):** Python (scikit-learn/XGBoost), packaged as Lambda layer or container.
+
+> Zero/low-cost mode: 1–2 Lambdas + API Gateway + DynamoDB On-Demand + S3 static hosting + CloudFront + SNS. Stop RDS unless you need PostGIS.
+
+## 4) Data Sources (choose 2–3 for MVP)
+
+* **Weather/severe alerts:** National/met APIs, Open-Meteo/OpenWeather (free tiers).
+* **Air quality (haze):** Open AQ platforms or local open data feeds.
+* **Flood:** Rainfall + river gauge feeds where available (or proxy via heavy rainfall thresholds).
+* **Earthquakes:** USGS/EMSC style feeds (JSON).
+* **IoT option:** ESP32 + DHT22/PM2.5 sensor → MQTT (optional).
+
+*(If any feed is missing locally, simulate with recorded JSON in S3 to prove end-to-end logic.)*
+
+## 5) Data Model (minimal + extendable)
+
+**Collections/Tables**
+
+* `sources` — registry of feed endpoints and refresh cadence.
+* `events` — normalized events (type, severity, geometry, start/end).
+* `risk_scores` — computed per region (grid cell or admin area).
+* `subscriptions` — user contact + geo (point or polygon) + channels.
+* `alerts` — deliveries (user\_id, event\_id, channel, status, timestamp).
+
+**events example (DynamoDB JSON):**
+
+```json
+{
+  "event_id": "eq-2025-08-14-12345",
+  "type": "earthquake",
+  "severity": 4.7,
+  "geometry": {"type":"Point", "coordinates":[101.7, 3.1]},
+  "area_bbox": [101.5, 2.9, 101.9, 3.3],
+  "starts_at": "2025-08-14T03:10:00Z",
+  "ends_at": "2025-08-14T05:10:00Z",
+  "source": "usgs",
+  "raw": {...}
+}
+```
+
+## 6) Core Algorithms (start simple, then grow)
+
+**MVP risk scoring (rule-based):**
+
+* Weather: if rainfall\_1h > X mm or wind > Y km/h → “High”
+* AQI: AQI > 150 → “Unhealthy”; AQI > 200 → “Very unhealthy”
+* Earthquakes: magnitude + distance attenuation → local intensity estimate
+
+**ML stretch:**
+
+* Train XGBoost on historical (weather + hydrology) to predict **flood likelihood next 3–6 hours** per grid, output probability + SHAP top features for explainability.
+
+## 7) Alerting Logic
+
+* **Geo filter:** Intersect user location buffer (e.g., 5–10 km) with event geometry; if overlap and severity ≥ threshold → alert.
+* **Rate limiting:** 1 alert per event per user (with “update” messages if severity changes).
+* **Multi-channel:** Web push → fastest; SMS/email → fallback; in-app banner for ongoing events.
+* **Embedded guidance:** Short, localized action steps (“Move car to higher ground”, “Close windows, use mask”).
+
+## 8) API Design (sample)
+
+* `POST /subscribe` { email|phone|pushPublicKey, location {lat,lng}, channels\[] }
+* `GET /events?bbox=...&type=...` → map layers
+* `POST /ingest/:source` (secured, called by Lambda)
+* `POST /alert/test` (admin)
+* `GET /me/alerts` (user’s recent alerts)
+
+## 9) Frontend UX (what to show)
+
+* **Home:** current status cards (Flood, AQI, Storm) with color badges.
+* **Map:** risk heatmap toggle, event pins, time slider.
+* **My Area:** subscribe/change radius; test alert button.
+* **Learn:** 30-second action cards per hazard (snackable micro-lessons).
+
+## 10) Security, Privacy, and Reliability
+
+* **PII:** Store only what you must (hashed email/phone if possible). Consent screen.
+* **Secrets:** SSM Parameter Store; never hardcode API keys.
+* **RBAC:** Admin routes behind Cognito group/role.
+* **Resilience:** Idempotent ingesters, dead-letter queue (SQS DLQ) for failed alerts.
+* **Observability:** CloudWatch logs + metrics (ingest latency, alerts sent, failures).
+* **Testing:** Replay historical JSON feeds to validate end-to-end alerting.
+
+## 11) Build Roadmap (8–10 days to strong demo)
+
+**Day 1–2:**
+
+* Repo skeleton (frontend + backend mono-repo), Terraform for S3+CloudFront, API Gateway, 2 Lambdas, DynamoDB.
+* Auth (Cognito) + basic subscribe form.
+
+**Day 3–4:**
+
+* Ingestion Lambda for 2 feeds (e.g., weather + AQI) on cron (EventBridge).
+* Normalize → `events` table; display on map.
+
+**Day 5:**
+
+* Risk function (rule-based), compute per user area; `alerts` table.
+* Web push setup; send first live alert to yourself.
+
+**Day 6–7:**
+
+* SMS/email via SNS; rate limiting; “Learn” micro-guidance.
+* Dashboard charts (Plotly): alerts/day, top hazards, response times.
+
+**Day 8+:**
+
+* Optional IoT ingestion; ML flood prototype; SHAP explainability; org admin view.
+
+## 12) Demo Script (5 minutes)
+
+1. Show map with a live/semi-live event (or replay button to simulate).
+2. Hit **Subscribe**, pick radius, trigger **Test Alert** → receive push/SMS.
+3. Toggle AQI/flood layers; open “What to do now” micro-lesson.
+4. Show dashboard metrics + how alerts are rate-limited and geofenced.
+
+## 13) Cost-Control / Free-Tier Tips
+
+* Host React app on **S3 + CloudFront** (pennies/usually free in tiny traffic).
+* **Lambda + API Gateway + DynamoDB On-Demand** stay near \$0 at student scale.
+* Prefer **web push** over SMS; enable SMS only for demo (few messages).
+* Turn off any RDS; use DynamoDB or S3 GeoJSON.
+
+## 14) What to put on your CV
+
+> **EcoGuard — Environmental Disaster Alerts:** Built a serverless early-warning platform (AWS Lambda, API Gateway, DynamoDB, SNS) that ingests multi-source hazard data, computes geofenced risk, and delivers real-time push/SMS alerts. React/Mapbox dashboard with risk heatmaps, timelines, and micro-guidance. Added ML prototype for short-term flood risk with explainability.
+
+---
+
+If you want, I can generate:
+
+* a **Terraform template** for the serverless backend (API Gateway + Lambda + DynamoDB + SNS), and
+* a **React starter** with map + PWA + subscription page.
+
+Tell me which you want first (Terraform or React), and I’ll drop a ready-to-run starter you can build on.
+Awesome—here’s a **complete API blueprint** for EcoGuard that covers:
+
+1. **External data APIs** you’ll pull from (real-time + forecast)
+2. Your **internal REST/WebSocket APIs** (what your app exposes)
+3. **Schemas, cadences, and payloads** (so you can implement fast)
+4. **Prediction endpoints** for short-term risk forecasts
+5. **Monitoring/metrics** so you can watch everything in real time
+
+Use this as your “mini-spec” when you build.
+
+---
+
+# 1) External Data Sources (ingest APIs)
+
+> Keep API keys in **AWS SSM Parameter Store**, never in code. Each ingester runs on a cron (EventBridge) and writes normalized events into `events` and raw into `raw_events` (S3).
+
+| Hazard                         | Purpose                | Example APIs (pick 1–2 each)                                                                | Cadence                                         |
+| ------------------------------ | ---------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| **Weather (rain, wind, temp)** | Flood & storm risk     | **Open-Meteo** (no key), **OpenWeather One Call**                                           | every 5–10 min for current; hourly for forecast |
+| **Severe weather alerts**      | Official warnings      | **CAP feeds** from national meteorological agencies; **GDACS**                              | every 2–5 min                                   |
+| **Air Quality (AQI/PM2.5)**    | Haze/health alerts     | **OpenAQ**, regional gov open data portals                                                  | every 5–10 min                                  |
+| **Earthquakes**                | Rapid alerts           | **USGS GeoJSON** (global), **EMSC** feeds                                                   | every 30–60 sec                                 |
+| **Wildfires**                  | Heat/thermal anomalies | **NASA FIRMS** (VIIRS/MODIS)                                                                | every 5–10 min                                  |
+| **Hydrology**                  | River level/flood      | National river-gauge APIs/open data (if available). If not, proxy with rainfall thresholds. | every 5–10 min                                  |
+
+> If a local/official API is unavailable in your region, **simulate** with historical JSON in S3 to validate your pipeline.
+
+### Normalization contract (what each ingester outputs)
+
+All external feeds are normalized to **GeoJSON-like events**:
+
+```json
+{
+  "event_id": "ext-usgs-2025-08-14T03:10:12Z-abc123",
+  "source": "usgs",
+  "type": "earthquake",
+  "severity": 4.7,
+  "confidence": 0.93,
+  "geometry": { "type": "Point", "coordinates": [101.7, 3.1] },
+  "area_bbox": [101.5, 2.9, 101.9, 3.3],
+  "starts_at": "2025-08-14T03:10:00Z",
+  "ends_at": "2025-08-14T05:10:00Z",
+  "properties": {
+    "depth_km": 12.4,
+    "mag_type": "Mw",
+    "station_count": 18
+  },
+  "raw_ref": "s3://ecoguard-raw/usgs/2025/08/14/abc123.json",
+  "ingested_at": "2025-08-14T03:10:12Z"
+}
+```
+
+---
+
+# 2) Internal REST API (your backend)
+
+Base URL: `https://api.ecoguard.example/v1`
+
+## A) Public Endpoints (app uses these)
+
+**Subscribe & profile**
+
+* `POST /subscribe`
+
+  * Body:
+
+    ```json
+    {
+      "email": "user@example.com",
+      "phone": "+60182700855",
+      "location": { "lat": 3.139, "lng": 101.6869 },
+      "radius_km": 10,
+      "channels": ["webpush","sms","email"],
+      "language": "en"
+    }
+    ```
+  * Returns: `subscriber_id`
+
+* `PUT /subscribe/{subscriber_id}` – update radius/channels/location
+
+* `DELETE /subscribe/{subscriber_id}` – delete subscription
+
+**Events & risk**
+
+* `GET /events?bbox=101.5,2.9,101.9,3.3&type=flood,storm&since=2025-08-14T03:00:00Z`
+
+  * Returns normalized events (array)
+* `GET /risk/now?lat=3.139&lng=101.6869`
+
+  * Returns current risk roll-up for that point:
+
+    ```json
+    {
+      "location": {"lat":3.139,"lng":101.6869},
+      "risk": [
+        {"type":"flood","level":"high","score":0.82,"expires_at":"2025-08-14T06:00:00Z"},
+        {"type":"aqi","level":"moderate","score":0.45}
+      ],
+      "explanations":[
+        "Rainfall>20mm in last hour within 5km",
+        "Upstream river gauge rising"
+      ]
+    }
+    ```
+
+**Learning & guidance**
+
+* `GET /guides?type=flood&level=high&lang=en` → returns short micro-lesson cards
+
+**Health/latency (public lite)**
+
+* `GET /status` → `{ "ok": true, "ts": "...", "latency_ms": 41 }`
+
+## B) Real-time (WebSocket / SSE)
+
+WebSocket URL: `wss://api.ecoguard.example/ws`
+
+**Channels**
+
+* `alerts:{subscriber_id}` – user-specific alerts
+* `events:global` – all new events (throttled)
+* `risk:{tile_id}` – risk update for a map tile (for live heatmap)
+
+**Sample push (user alert)**
+
+```json
+{
+  "channel": "alerts:sub_9f21",
+  "data": {
+    "alert_id": "alrt_7832",
+    "type": "flood",
+    "level": "high",
+    "title": "Flood risk high near KL Sentral",
+    "message": "Move vehicle to higher ground. Avoid underpasses.",
+    "valid_until": "2025-08-14T06:00:00Z",
+    "links": ["https://app.ecoguard/guides/flood/high"]
+  }
+}
+```
+
+## C) Admin & Ingestion (secured with Cognito + IAM)
+
+**Ingestion (called by Lambdas or trusted jobs)**
+
+* `POST /ingest/weather/openmeteo` – body: raw/normalized batch
+* `POST /ingest/earthquake/usgs`
+* `POST /ingest/air/openaq`
+  *(Each validates, normalizes if needed, writes to DB, triggers risk compute.)*
+
+**Risk & alert pipeline**
+
+* `POST /pipeline/risk/recompute?bbox=...` – recompute risk for an area
+* `POST /pipeline/alerts/dispatch?event_id=...` – force dispatch (testing)
+
+**Admin**
+
+* `GET /admin/alerts?since=...&status=...` – list/filters
+* `POST /admin/alert/test` – send test alert to a subscriber
+* `GET /admin/rate-limits` – view current throttles
+* `POST /admin/blacklist` – block abusive numbers/emails/domains
+
+---
+
+# 3) Prediction & Model APIs (future risk)
+
+> Models run in **AWS Lambda** (container image) or SageMaker endpoints for heavier loads. Features are pulled from your **features store** (DynamoDB or S3 parquet).
+
+**Training / versioning**
+
+* `POST /ml/train/flood-v1`
+
+  * Body:
+
+    ```json
+    {
+      "time_range": ["2024-01-01","2025-06-30"],
+      "grid_size_km": 2,
+      "features": ["rain_1h","rain_3h","soil_sat","elev","river_upstream","ndvi","temp","wind"],
+      "labels": "historical_flood_reports",
+      "algorithm": "xgboost"
+    }
+    ```
+  * Returns: `{ "model_id":"flood-v1.2025-08-14", "metrics": { "AUC":0.91, "F1":0.77 } }`
+
+* `GET /ml/models` – list models & metrics
+
+* `POST /ml/deploy` – set active model for an area/hazard
+
+**Online inference (point & grid)**
+
+* `GET /forecast/risk?type=flood&lat=3.139&lng=101.6869&horizon_hours=6`
+
+  * Returns:
+
+    ```json
+    {
+      "type":"flood",
+      "horizon_hours":6,
+      "probability":0.73,
+      "level":"high",
+      "explanations":["rain_1h high","upstream gauge rising","low elevation"],
+      "model_id":"flood-v1.2025-08-14",
+      "valid_until":"2025-08-14T06:00:00Z"
+    }
+    ```
+
+* `GET /forecast/grid?type=aqi&bbox=101.5,2.9,101.9,3.3&resolution_km=2&horizon_hours=3`
+
+  * Returns a small raster/GeoJSON grid of probabilities/levels (for heatmap)
+
+**Explainability**
+
+* `GET /ml/shap?type=flood&lat=...&lng=...` → top features + contributions
+
+---
+
+# 4) Data Contracts (storage)
+
+**DynamoDB tables**
+
+* `events(pk=event_id, sk=type#starts_at)` – normalized events
+* `risk_scores(pk=tile_id, sk=type#timestamp)` – tile/grid risk time series
+* `subscriptions(pk=subscriber_id)` – user profile & geo (centroid + radius\_km)
+* `alerts(pk=alert_id, sk=subscriber_id#timestamp)` – delivery logs
+
+**S3 buckets**
+
+* `s3://ecoguard-raw/<source>/YYYY/MM/DD/*.json` – raw feed snapshots
+* `s3://ecoguard-tiles/<type>/z/x/y.pbf` – optional vector tiles for heatmaps
+
+---
+
+# 5) Real-time pipeline (how pieces talk)
+
+1. **EventBridge** schedules call Lambda ingesters → pull external APIs → normalize → write `events` + raw to S3.
+2. **Risk Compute Lambda** (triggered by DynamoDB streams or EventBridge) → computes per-tile & per-subscriber risk → writes to `risk_scores`.
+3. **Alert Dispatcher Lambda** filters subscribers by geo-overlap & thresholds → sends **WebPush** (primary), **SNS SMS**/**SES email** (secondary) → writes to `alerts`.
+4. **WebSocket gateway** pushes new alerts to `alerts:{subscriber_id}` channels instantly.
+5. **Dashboard** polls `/events` and subscribes `events:global` for live updates.
+
+---
+
+# 6) Monitoring, Metrics & Ops (APIs you watch)
+
+**Prometheus/metrics style (or JSON)**
+
+* `GET /metrics`  *(admin only; export to CloudWatch or Prometheus)*
+
+  ```txt
+  ecoguard_ingest_success_total{source="usgs"} 1287
+  ecoguard_ingest_latency_seconds_sum{source="usgs"} 432.1
+  ecoguard_risk_compute_duration_seconds_sum 98.4
+  ecoguard_alerts_sent_total{channel="webpush"} 642
+  ecoguard_alert_failures_total{channel="sms"} 3
+  ecoguard_ws_active_connections 214
+  ```
+
+**Health & readiness**
+
+* `GET /healthz` → all dependencies ok?
+* `GET /readyz` → warm model loaded? DB reachable?
+
+**Audit & security**
+
+* `GET /admin/audit?since=...` → who sent what & when
+* CloudTrail enabled for all admin endpoints (IAM-scoped)
+* WAF (if used) logs to S3/CloudWatch
+
+---
+
+# 7) Rate limits, dedupe, safety
+
+* **Rate limit** public reads (e.g., 60 req/min/IP)
+* **Dedupe** events by `(source, external_event_id)`
+* **Alert suppression:** one alert per event per user; updates allowed if severity changes
+* **Backoff & DLQ:** failed sends go to SQS DLQ; retry with jitter
+* **PII minimization:** store only required contact info; hash emails; encrypt phone numbers (KMS)
+
+---
+
+# 8) Minimal Swagger-style summary (copy into your docs)
+
+```
+GET  /status
+GET  /events
+GET  /risk/now
+GET  /forecast/risk
+GET  /forecast/grid
+GET  /guides
+POST /subscribe
+PUT  /subscribe/{id}
+DEL  /subscribe/{id}
+
+# Real-time
+WS   /ws  (alerts:{subscriber_id}, events:global, risk:{tile_id})
+
+# Admin/Secured
+POST /ingest/{source}
+POST /pipeline/risk/recompute
+POST /pipeline/alerts/dispatch
+POST /admin/alert/test
+GET  /metrics
+GET  /healthz
+GET  /readyz
+GET  /admin/audit
+```
+
+---
+
+## Implementation tips (to actually ship this)
+
+* Start with **2 ingesters** (Open-Meteo + USGS).
+* Build **/events, /subscribe, /risk/now** first → one Lambda each.
+* Add **WebPush** next (free, fast); keep SMS for demo only.
+* Ship **rule-based risk** first; add **/forecast** with a simple model when ready.
+* Wire **/metrics** from day 1—you’ll thank yourself later.
+
+If you want, I can draft a **Terraform starter** that wires: API Gateway + 4 Lambdas (ingest, risk, alerts, public API) + DynamoDB + S3 + EventBridge + SNS + WebSocket API, using these exact endpoints.
+
+
+ Approach: Zero-Cost / Freemium Tech Stack
+1. Frontend (User App & Dashboard)
+Mobile App:
+
+Use Flutter (Google’s free open-source SDK) → build cross-platform (Android/iOS) app.
+
+Free tier: 100% free to develop & test locally.
+
+Web Dashboard:
+
+Use React + free hosting on Vercel or Netlify.
+
+Free SSL, CDN, and analytics.
+
+2. Backend / APIs
+Option A: Firebase Free Tier (Best for Beginners)
+
+Firebase Authentication → free for up to 50k MAUs.
+
+Firestore Database → free 50,000 reads/writes per day.
+
+Firebase Cloud Messaging → free for push alerts.
+
+Option B: Supabase Free Tier
+
+Free PostgreSQL database + authentication + real-time subscriptions.
+
+Option C: Free-tier cloud (if you want AWS feel but no credit card)
+
+Use AWS Educate Starter Account or Google Cloud Free Tier (90-day credits).
+
+3. AI / Prediction
+Model Training: Use Google Colab Free (2 free GPUs per day).
+
+Models:
+
+Train disaster prediction models (e.g., flooding based on rainfall, wildfire detection with NASA satellite data).
+
+Store models on Hugging Face Hub (Free).
+
+Inference Hosting:
+
+Hugging Face Spaces (free limited compute).
+
+Or run inference on Colab when needed.
+
+4. Alert & Notification System
+SMS/Email Alerts
+
+Twilio Trial Account (gives free SMS credits).
+
+SendGrid Free Tier (100 emails/day free).
+
+Push Notifications
+
+Free via Firebase Cloud Messaging.
+
+Map Visualization
+
+Free with Leaflet.js or Mapbox free tier.
+
+5. Real-Time Monitoring Data (Free APIs)
+Here’s a set of FREE APIs you can integrate:
+
+🌍 Weather & Environment APIs
+
+OpenWeatherMap (Free tier: 60 calls/min).
+
+WeatherAPI (Free tier: 1M calls/month).
+
+NOAA Climate Data API (US, free).
+
+Meteostat API (historical weather).
+
+🔥 Disaster & Emergency APIs
+
+NASA EONET API → global natural events (wildfires, floods, volcanoes, storms).
+
+USGS Earthquake API → real-time earthquake data worldwide.
+
+Global Disaster Alert and Coordination System (GDACS API) → global flood, quake, storm alerts.
+
+🛰 Satellite & Remote Sensing
+
+NASA Earthdata (fires, CO₂, pollution).
+
+Copernicus Emergency Management API (EU-based).
+
+6. Cost Control
+Everything above can be run free forever with limits.
+
+For scale-up: You can later migrate backend to AWS/GCP when you get cloud credits.
+
+✅ Summary (0$ Path)
+
+Frontend → Flutter + React (host on Netlify/Vercel free).
+
+Backend → Firebase/Supabase free tier.
+
+AI/ML → Google Colab + Hugging Face Spaces.
+
+Data APIs → NASA, USGS, OpenWeatherMap, GDACS (all free).
+
+Notifications → Firebase push (free), Twilio trial SMS, SendGrid free email.
+
+This way you’ll have a real working prototype at 0$ cost while showing employers a project with real-time monitoring, AI prediction, and alerting system. 🚀
+
+👉 Do you want me to make you a step-by-step build plan (Week 1 → Week N) so you can follow and actually build the MVP with 0$?
+
+
+
+
+
+
+
+
+
+Ask ChatGPT
+You said:
+yes
+
+
+ChatGPT said:
+Perfect 👍 let’s map out a 0$ investment approach for your Environmental Disaster Alert & Prediction System.
+
+🔹 Approach 2: Build on Free & Open Ecosystem (No AWS / No Cloud Billing)
+Instead of relying on AWS (which requires billing verification), we use only free-tier, open-source, and academic-friendly services.
+
+1. Data Sources (Free APIs + Open Data)
+You can tap into already free disaster monitoring APIs:
+
+🌍 NASA Earthdata / Open APIs → global satellite + weather + fire data
+
+☁️ OpenWeatherMap (Free Tier) → weather alerts + severe weather warnings
+
+🌊 USGS Earthquake Hazards Program API → earthquakes worldwide (real-time)
+
+🔥 Global Forest Watch API → fire alerts, deforestation risks
+
+🌀 GDACS (Global Disaster Alert Coordination System API) → multi-disaster alerts (cyclones, floods, earthquakes)
+
+🌡️ Copernicus Climate Data → climate change indicators (temperature, sea level, etc.)
+
+(all free with either open API keys or public datasets)
+
+2. Backend & Data Processing
+Free Hosting:
+
+Render.com (free tier Node.js backend, 750 hours/month)
+
+Railway.app (free credits monthly)
+
+Google Cloud Run (always free) or Heroku Free Tier (student-friendly)
+
+Backend Stack:
+
+Node.js + Express.js for API requests
+
+MongoDB Atlas (Free Tier 500MB) for storing alerts + user data
+
+Python (FastAPI/Flask) microservice for AI prediction models
+
+3. AI for Prediction (Free Training/Hosting)
+Use Google Colab (Free) for training ML models (time series prediction of disasters)
+
+Export trained model and serve via Hugging Face Spaces (Free hosting, supports ML models)
+
+Example Models:
+
+LSTM/Prophet for flood/temperature trend prediction
+
+BERT/DistilBERT for analyzing incoming disaster reports (text-based alerts)
+
+4. Frontend (Free Web App + Mobile Ready)
+React.js (for dashboard + visualizations)
+
+Chart.js / Plotly.js for disaster trend graphs
+
+Leaflet.js or Mapbox (Free Tier) for interactive disaster maps
+
+Hosting on Netlify / Vercel (Free)
+
+5. Alert & Notification System
+Email Alerts: Free with Gmail SMTP or SendGrid free tier
+
+Push Notifications: Firebase Cloud Messaging (Free Tier)
+
+SMS Alerts: Twilio trial credits or WhatsApp Business API (sandbox free)
+
+6. Architecture Flow
+Disaster APIs fetch → store into MongoDB
+
+AI model (Colab-trained + hosted on Hugging Face) → prediction layer
+
+Backend API → aggregates real-time + predictive alerts
+
+Frontend → shows live disaster map, past trends, predictions
+
+Notification system → sends SMS/Email/Push alerts to subscribed users
+
+✅ Cost: $0.00 (using free tiers, student accounts, and open APIs)
+✅ Scalable if later moved to AWS/GCP/Azure once funding is available
+✅ Resume Highlight: Shows skills in APIs, AI/ML, full-stack dev, geospatial visualization, and alert systems
+
+👉 Do you want me to list the exact APIs + example endpoints (with request/response format) so you can start building the MVP quickly?
+
+
+
+# EcoGuard — Environmental Disaster Alerts & Prediction (Build for \$0)
+
+A complete, practical, step‑by‑step blueprint to ship a real MVP with **zero cost**, using free tiers and open data. This document includes visuals, setup steps, code snippets, data schemas, API contracts, deployment, monitoring, and a 5‑minute demo script.
+
+---
+
+## 0) At‑a‑Glance Architecture
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                               FRONTEND (Free)                              │
+│  React + Vite (Vercel/Netlify) • PWA + Web Push • Leaflet map + Plotly     │
+│  - Subscribe page  - Map (events/risk)  - My Alerts  - Micro‑guides        │
+└───────────────▲───────────────────────────────────────────────▲────────────┘
+                │ WebSocket (Socket.IO)                         │ REST (HTTPS)
+                │                                                │
+┌───────────────┴───────────────────────────────────────────────┴────────────┐
+│                             BACKEND (Free)                                  │
+│  Node.js + Express (Render/Railway free dyno)                              │
+│  Endpoints: /subscribe /events /risk/now /forecast/* /ws /metrics          │
+│  Jobs: GitHub Actions (cron) → POST /ingest/* (pulls USGS, EONET, OWM)     │
+│  Web Push: VAPID keys (self‑hosted)                                        │
+└───────▲──────────────────────────────────────────────▲──────────────────────┘
+        │ DynamoDB alt: MongoDB Atlas (Free)           │ Object Storage (S3 alt)
+┌───────┴─────────────┐                          ┌─────┴─────────────────────┐
+│  MongoDB Atlas Free │                          │  S3‑like (optional)       │
+│  collections:       │                          │  Raw JSON snapshots       │
+│  - events           │                          │  (skip for MVP)           │
+│  - subscriptions    │                          └───────────────────────────┘
+│  - alerts           │
+│  - risk_scores      │
+└─────────▲───────────┘
+          │ training data / features
+┌─────────┴──────────────────────────────────────────────────────────────────┐
+│                         AI / PREDICTION (Free)                             │
+│  Train: Google Colab (free)  →  Host: Hugging Face Spaces (free)           │
+│  API: /predict (flood/aqi short‑horizon) • SHAP explanations (optional)    │
+└────────────────────────────────────────────────────────────────────────────┘
+
+Data Sources (Free): USGS Earthquake GeoJSON, NASA EONET, Open‑Meteo/OpenWeather, OpenAQ, GDACS.
+```
+
+---
+
+## 1) Prerequisites (One‑Time)
+
+* GitHub account
+* Free accounts: **Vercel** or **Netlify**, **Render** or **Railway**, **MongoDB Atlas**, **Hugging Face**, **OpenWeather** (API key), **Web Push (VAPID)** keys.
+* Node.js 18+, Python 3.10+ (local dev)
+
+---
+
+## 2) Repos & Project Layout
+
+Create a GitHub org or monorepo:
+
+```
+ecoguard/
+  backend/                # Node + Express + Socket.IO
+  frontend/               # React + Vite + PWA + Leaflet
+  ml/                     # notebooks + model card
+  .github/workflows/      # ingestion cron (GitHub Actions)
+```
+
+---
+
+## 3) Data Model (MongoDB Atlas Free)
+
+**collections**
+
+* `events`: normalized GeoJSON‑ish hazard events
+* `risk_scores`: per‑grid/per‑area risk snapshots
+* `subscriptions`: user contact + location + channels
+* `alerts`: delivery logs (who received what, when)
+
+**events (example)**
+
+```json
+{
+  "_id": "ext-usgs-2025-08-14T03:10:12Z-abc123",
+  "source": "usgs",
+  "type": "earthquake",
+  "severity": 4.7,
+  "confidence": 0.93,
+  "geometry": { "type":"Point", "coordinates":[101.7,3.1] },
+  "area_bbox": [101.5,2.9,101.9,3.3],
+  "starts_at": "2025-08-14T03:10:00Z",
+  "ends_at": "2025-08-14T05:10:00Z",
+  "properties": {"depth_km":12.4,"mag_type":"Mw"},
+  "ingested_at": "2025-08-14T03:10:12Z"
+}
+```
+
+**subscriptions (example)**
+
+```json
+{
+  "_id": "sub_9f21",
+  "email": "user@example.com",
+  "push": {"endpoint":"...","keys":{"p256dh":"...","auth":"..."}},
+  "phone": "+60182700855",
+  "language": "en",
+  "loc": {"type":"Point","coordinates":[101.6869,3.139]},  
+  "radius_km": 10,
+  "channels": ["webpush","email"],
+  "created_at": "2025-08-14T03:00:00Z"
+}
+```
+
+---
+
+## 4) Backend — Step‑by‑Step (Render/Railway Free)
+
+### 4.1 Bootstrapping
+
+```bash
+mkdir backend && cd backend
+npm init -y
+npm i express cors helmet mongoose joi express-rate-limit socket.io jsonwebtoken web-push node-fetch
+npm i -D typescript ts-node-dev @types/node @types/express @types/cors @types/jsonwebtoken
+npx tsc --init
+```
+
+`src/server.ts` (minimal skeleton)
+
+```ts
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import mongoose from 'mongoose';
+import rateLimit from 'express-rate-limit';
+import { createServer } from 'http';
+import { Server as IOServer } from 'socket.io';
+
+const app = express();
+const server = createServer(app);
+const io = new IOServer(server, { cors: { origin: '*' } });
+
+app.use(express.json({ limit: '1mb' }));
+app.use(cors());
+app.use(helmet());
+app.use(rateLimit({ windowMs: 60_000, max: 120 }));
+
+app.get('/v1/status', (req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
+
+io.on('connection', (socket) => {
+  console.log('ws connected', socket.id);
+});
+
+const PORT = process.env.PORT || 8080;
+(async () => {
+  await mongoose.connect(process.env.MONGO_URL!);
+  server.listen(PORT, () => console.log('API on :' + PORT));
+})();
+```
+
+**Env vars (Render/Railway → Settings → Environment)**
+
+* `MONGO_URL` (MongoDB Atlas connection string)
+* `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (for Web Push)
+* `OPENWEATHER_API_KEY` (and others as needed)
+
+### 4.2 Models & Geo Indexes (Mongo)
+
+Create 2dsphere indexes for `events.geometry` and `subscriptions.loc`.
+
+```js
+// in a setup script or MongoDB Atlas UI
+db.events.createIndex({ geometry: '2dsphere' });
+db.subscriptions.createIndex({ loc: '2dsphere' });
+```
+
+### 4.3 Public Endpoints
+
+* `POST /v1/subscribe` (create/update)
+* `GET  /v1/events` (bbox + type + since)
+* `GET  /v1/risk/now` (lat,lng)
+* `GET  /v1/guides` (hazard micro‑lessons)
+* WebSocket: `wss://api…/ws` (Socket.IO default path)
+
+**/v1/subscribe (sketch)**
+
+```ts
+app.post('/v1/subscribe', async (req, res) => {
+  // validate with Joi, upsert by email or push endpoint
+  // save geo point as [lng, lat]
+  // return subscriber_id
+});
+```
+
+**/v1/events (sketch)**
+
+```ts
+app.get('/v1/events', async (req, res) => {
+  // parse bbox=west,south,east,north & type & since
+  // Mongo geoWithin with $box and filters
+});
+```
+
+**/v1/risk/now (rule‑based MVP)**
+
+```ts
+app.get('/v1/risk/now', async (req, res) => {
+  // find recent events within radius of lat,lng
+  // compute simple scores: rainfall>threshold, AQI>150, earthquake Mag attenuation
+  // return levels + explanations
+});
+```
+
+### 4.4 Ingestion Endpoints (called by cron)
+
+* `POST /v1/ingest/usgs`
+* `POST /v1/ingest/eonet`
+* `POST /v1/ingest/openweather`
+
+Each: fetch external API → normalize → upsert into `events` → emit WS update (`io.emit('events:global', evt)`)
+
+**USGS example (pseudo)**
+
+```ts
+const USGS_URL = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson';
+
+app.post('/v1/ingest/usgs', async (req, res) => {
+  const r = await fetch(USGS_URL); const g = await r.json();
+  const docs = g.features.map((f:any) => ({
+    _id: `usgs-${f.id}`,
+    source: 'usgs', type: 'earthquake',
+    severity: f.properties.mag,
+    confidence: 0.9,
+    geometry: f.geometry,
+    starts_at: new Date(f.properties.time).toISOString(),
+    properties: { place: f.properties.place, depth_km: f.geometry.coordinates[2] }
+  }));
+  // upsert many; skip duplicates
+  // io.emit('events:global', { count: docs.length });
+  res.json({ inserted: docs.length });
+});
+```
+
+### 4.5 Alerts Dispatcher (Web Push first)
+
+Use **web-push** with VAPID keys. Send when a new event’s geometry intersects a subscriber’s buffer.
+
+```ts
+import webpush from 'web-push';
+webpush.setVapidDetails(process.env.VAPID_SUBJECT!, process.env.VAPID_PUBLIC_KEY!, process.env.VAPID_PRIVATE_KEY!);
+
+async function sendPush(sub:any, payload:any){
+  try { await webpush.sendNotification(sub.push, JSON.stringify(payload)); }
+  catch(e){ console.error('push fail', e.statusCode); }
+}
+```
+
+For SMS/email, add **Twilio trial** / **SendGrid free** later; keep disabled by default to stay \$0.
+
+### 4.6 Metrics & Health
+
+Expose `/v1/metrics` (Prometheus format) and `/v1/status`.
+
+```txt
+ecoguard_ingest_success_total{source="usgs"} 1287
+ecoguard_alerts_sent_total{channel="webpush"} 642
+```
+
+---
+
+## 5) GitHub Actions — Free Scheduled Ingestion
+
+`.github/workflows/ingest.yml`
+
+```yaml
+name: Ingest Feeds
+on:
+  schedule:
+    - cron: '*/5 * * * *'  # every 5 minutes
+  workflow_dispatch: {}
+jobs:
+  call-ingesters:
+    runs-on: ubuntu-latest
+    steps:
+      - name: USGS
+        run: |
+          curl -s -X POST "$API_BASE/v1/ingest/usgs" -H "Authorization: Bearer $INGEST_TOKEN"
+      - name: EONET
+        run: |
+          curl -s -X POST "$API_BASE/v1/ingest/eonet" -H "Authorization: Bearer $INGEST_TOKEN"
+      - name: OpenWeather
+        run: |
+          curl -s -X POST "$API_BASE/v1/ingest/openweather" -H "Authorization: Bearer $INGEST_TOKEN"
+    env:
+      API_BASE: ${{ secrets.API_BASE }}
+      INGEST_TOKEN: ${{ secrets.INGEST_TOKEN }}
+```
+
+This keeps ingestion **off your server** (free) and on GitHub’s infra.
+
+---
+
+## 6) Frontend — Step‑by‑Step (Vercel/Netlify Free)
+
+### 6.1 Bootstrap
+
+```bash
+mkdir frontend && cd frontend
+npm create vite@latest ecoguard -- --template react-ts
+cd ecoguard && npm i leaflet plotly.js socket.io-client idb workbox-window
+```
+
+### 6.2 Map & Events Layer (Leaflet)
+
+* Add tile layer (OpenStreetMap), events as markers/heat.
+* Call `GET /v1/events?bbox=...` on map move; subscribe to `events:global` for live updates.
+
+### 6.3 Subscribe UI
+
+* Form: email/phone (optional), allow browser **Push** (Web Push subscription), select radius.
+* POST to `/v1/subscribe` and store `subscriber_id` in IndexedDB.
+
+### 6.4 PWA + Web Push
+
+* Register Service Worker (Workbox).
+* Request Notification permission → get subscription (`pushManager.subscribe` with VAPID public key) → send to backend.
+* Display incoming pushes as system notifications + in‑app toasts.
+
+### 6.5 Risk Widgets & Micro‑Guides
+
+* `GET /v1/risk/now?lat=…&lng=…` → show colored badges (Low/Med/High) with short actions.
+* Guides: static JSON by hazard type with concise “Do this now” steps.
+
+### 6.6 Deploy
+
+* Push to GitHub → Import project into **Vercel/Netlify** → set `VITE_API_BASE` env.
+
+---
+
+## 7) ML — Short‑Horizon Forecast (Free)
+
+### 7.1 Colab Notebook (ml/)
+
+* Load historical rainfall + flood reports (or proxy labels).
+* Features: rain\_1h, rain\_3h, upstream gauge (if available), elevation, drainage proxy.
+* Train **XGBoost** or logistic regression → output probability of flood in next 3–6 hours.
+* Save model (`joblib.dump`).
+
+### 7.2 Host on Hugging Face Spaces
+
+* Create a **Gradio** or **FastAPI** Space exposing `POST /predict`:
+
+```json
+{ "lat": 3.139, "lng": 101.6869, "features": {"rain_1h": 22.5, "rain_3h": 41.0, "elev": 62} }
+```
+
+* Returns `{ probability: 0.73, level: "high", explanations: [ ... ] }`
+
+### 7.3 Integrate Backend
+
+* Add `/v1/forecast/risk` that proxies to Space (cache results for 5–10 min to stay within limits).
+
+---
+
+## 8) Security & Privacy (Zero‑Cost Friendly)
+
+* **CORS** locked to your app domain.
+* **Ingestion auth**: Bearer token (`INGEST_TOKEN`) checked by middleware.
+* **Rate limit** public endpoints.
+* **Hash emails** (SHA‑256 + salt) in DB if you don’t need plain text.
+* **Store only necessary PII** (phone optional; default to Web Push).
+* **Content Security Policy** via `helmet()` with tight directives.
+
+---
+
+## 9) Observability (Free)
+
+* Cloud logs: Render/Railway dashboard logs.
+* `/v1/metrics` → Optional send to **Grafana Cloud Free** (Prometheus remote‑write) or scrape via GitHub Action to store snapshots.
+* Synthetic uptime: **UptimeRobot** free pings `/v1/status` + frontend URL.
+
+---
+
+## 10) 5‑Minute Demo Script
+
+1. **Open dashboard** (map + status badges).
+2. **Subscribe** with web push; set radius 10 km.
+3. **Trigger test**: call `/admin/alert/test` for your subscriber → show instant notification.
+4. **Live feed**: show USGS events arriving (GitHub Actions log → frontend updates via WebSocket).
+5. **Forecast**: call `/v1/forecast/risk?lat=…&lng=…` → show probability + micro‑guide.
+6. **Metrics**: open `/v1/metrics` to highlight reliability counters.
+
+---
+
+## 11) Week‑by‑Week Plan (Ship Fast)
+
+* **Week 1**: Backend skeleton, Mongo models, `/status`, `/subscribe`, Web Push; deploy on Render.
+* **Week 2**: Ingestion (USGS, EONET, OpenWeather) via **GitHub Actions**; `/events`; WebSocket broadcast.
+* **Week 3**: Frontend map, events layer, risk widget, micro‑guides; PWA + push; deploy on Vercel.
+* **Week 4**: Forecast proxy to Hugging Face Space; `/forecast/risk`; metrics; polish UI; record demo.
+
+---
+
+## 12) Polished Resume Bullet
+
+> Built \*\*EcoGuar
+Awesome — let’s lock in a clean, end‑to‑end **design + build guide** you can drop straight into your FYP doc. I’ll cover UX/UI design, system architecture, data models, API design, deployment, monitoring, security, testing, and a short demo script. Everything is structured so you can actually ship the MVP on a \$0 stack.
+
+---
+
+# EcoGuard — Environmental Disaster Alerts & Predictions
+
+**Goal:** Ingest open hazard data → compute current & forecast risk → send geofenced alerts → show a live map + trends.
+
+---
+
+## 1) Product framing (1‑pager)
+
+* **Users:** residents, NGOs, schools, local businesses.
+* **Jobs-to-be-done:**
+
+  1. “Warn me, only if I’m affected.”
+  2. “Show me what to do now.”
+  3. “Let me see current & near‑term risk in my area.”
+* **MVP success metrics:** time‑to‑alert < 30s after event ingestion; <1 false alert per user per week; 90% of alerts delivered within 3s over web push.
+
+---
+
+## 2) Architecture (step‑by‑step)
+
+```
+[Free Data APIs]
+  ├─ Open-Meteo (weather/alerts)
+  ├─ USGS (earthquakes)
+  ├─ NASA EONET/FIRMS (fires)
+  └─ OpenAQ (air quality)
+        │  (cron pulls)
+        ▼
+[Ingestion Jobs: GitHub Actions/Lambda]
+  - Normalize → GeoJSON Events
+  - Store raw in S3-like (or GitHub artifacts)
+        │
+        ▼
+[Backend API (Node/Express on Render/Railway free)]
+  - /events, /risk/now, /forecast/*
+  - WebSocket for live pushes
+        │
+        ├──► [DB: MongoDB Atlas free]
+        │      events, risk_scores, subscriptions, alerts
+        │
+        └──► [Notifier]
+               - Web Push (VAPID/FCM free)
+               - Email (SendGrid free)
+               - SMS (Twilio trial for demo)
+        │
+        ▼
+[ML Inference (Hugging Face Space) ← trained on Colab]
+  - /predict flood/aqi short‑term
+        │
+        ▼
+[Frontend PWA (React on Vercel/Netlify free)]
+  - Map, Status Cards, Subscribe, My Alerts, Guides
+```
+
+### Build order
+
+1. **DB + API skeleton** → 2) **Ingest 1–2 sources** → 3) **/events + map** → 4) **subscribe + web push** → 5) **risk rules** → 6) **/forecast (ML)** → 7) **dashboard + metrics**.
+
+---
+
+## 3) Data model (MongoDB Atlas)
+
+**collections**
+
+* `events`
+
+  ```
+  {
+    _id, type: "earthquake|flood|aqi|storm|fire",
+    severity: Number, confidence: Number,
+    geometry: { type:"Point|Polygon", coordinates:[...] },
+    area_bbox: [minLon,minLat,maxLon,maxLat],
+    starts_at, ends_at, source, ingested_at,
+    properties: {...}, raw_ref
+  }
+  ```
+* `risk_scores`
+
+  ```
+  { _id, tile_id, type, timestamp, score: 0..1, level: "low|med|high",
+    features: { rain_1h, river_delta, aqi, ... }, model_id? }
+  ```
+* `subscriptions`
+
+  ```
+  { _id, user_id, channels:["webpush","email","sms"],
+    location:{lat,lng}, radius_km: Number, language:"en|ms|ar",
+    push:{endpoint, keys:{p256dh,auth}}, created_at }
+  ```
+* `alerts`
+
+  ```
+  { _id, subscriber_id, event_id, type, level,
+    channel:"webpush|email|sms", status:"sent|failed",
+    sent_at, delivery_ms }
+  ```
+
+---
+
+## 4) API spec (internal)
+
+**Public**
+
+* `POST /subscribe` → {email/phone or webpush keys, location, radius\_km, channels\[]} → `{subscriber_id}`
+* `PUT /subscribe/:id` / `DELETE /subscribe/:id`
+* `GET /events?bbox=lon1,lat1,lon2,lat2&type=flood,aqi&since=ISO` → \[event...]
+* `GET /risk/now?lat=...&lng=...` → roll‑up risk + short explanations
+* `GET /forecast/risk?type=flood&lat=...&lng=...&h=6` → probability + level + valid\_until
+* `GET /guides?type=flood&level=high&lang=en` → micro‑lessons (static JSON/MD)
+
+**Real‑time**
+
+* `wss://api/ws`
+  channels: `events:global`, `alerts:{subscriber_id}`, `risk:{tile_id}`
+
+**Admin (protected)**
+
+* `POST /ingest/:source` (for scheduled jobs)
+* `POST /pipeline/risk/recompute?bbox=...`
+* `POST /admin/alert/test` → send yourself a test alert
+* `GET /metrics` (Prometheus text)
+* `GET /healthz`, `GET /readyz`
+
+---
+
+## 5) UX/UI design system
+
+### Brand & theming
+
+* **Name:** EcoGuard
+* **Palette:**
+
+  * Primary: #0B6E4F (emerald)
+  * Accent: #E8B317 (amber)
+  * Danger: #C62828 (alert red)
+  * Neutral: #0F172A (ink), #F8FAFC (paper)
+* **Typography:**
+
+  * Headings: *Inter* (600)
+  * Body: *Inter* (400)
+  * Numeric/UI: *IBM Plex Mono* (for metrics)
+* **Iconography:** Lucide/Feather icons (open-source)
+
+### Components
+
+* **Status Card** (hazard, level, short tip)
+* **Map Panel** (Leaflet/Mapbox): heatmap toggle, pins, time slider
+* **Subscribe Drawer**: set radius, channels, language
+* **Alert Toast**: sticky, color‑coded (High=red, Med=amber, Low=green)
+* **Timeline**: small area chart (Plotly) for last 24h risk
+* **Guide Sheet**: 30–60s micro‑lesson (checklist)
+
+### Key screens
+
+1. **Home**:
+
+   * Top: “My Area Risk” cards (Flood/AQI/Storm)
+   * Map: current events + risk heatmap
+   * CTA: “Get Alerts” → opens Subscribe
+2. **My Alerts**:
+
+   * List of recent alerts, status (Delivered/Updated), test alert button
+3. **Guides**:
+
+   * Hazard tabs; short, localized guidance
+4. **Admin (hidden)**:
+
+   * Metrics, send test, recent ingests, DLQ count
+
+### Accessibility & i18n
+
+* WCAG AA contrast, keyboard nav, focus rings
+* Language switch (en/ms/ar); RTL-aware layout
+* Icon + text for all alert levels; do not rely on color alone
+
+---
+
+## 6) Risk logic (MVP → ML)
+
+**Rule‑based MVP (ship week 1):**
+
+* Flood: `rain_1h > 20mm` within radius **OR** severe alert present → `high`
+* AQI: `AQI ≥ 150` → `unhealthy`; `≥ 200` → `very unhealthy`
+* Earthquake: `mag ≥ 4.5` and `distance < 150km` → `medium/high` with attenuation
+
+**ML v1 (week 3+):**
+
+* Train **XGBoost** for flood 0–6h risk using features: rain\_1h, rain\_3h, upstream rain, elevation, distance to river, soil saturation proxy, NDVI, temp, wind
+* Output: probability, level thresholds, SHAP top features for explanations
+
+---
+
+## 7) Implementation guide (step‑by‑step)
+
+### Week 1 — MVP backbone
+
+1. **Repo setup**
+
+   * Monorepo: `/api` (Node/Express, TypeScript), `/web` (React/Vite), `/ml` (notebooks)
+2. **DB & hosting**
+
+   * Create **MongoDB Atlas** free cluster
+   * Deploy API to **Render** (free web service)
+   * Deploy web to **Vercel/Netlify**
+3. **APIs (minimal)**
+
+   * `POST /subscribe`, `GET /events`, `GET /status`
+   * Seed: store a few sample events for your city
+4. **Frontend**
+
+   * Map (Leaflet) + Status Cards + Subscribe Drawer
+   * Save subscription (location/radius)
+
+### Week 2 — Real data + alerts
+
+5. **Ingestion jobs** (free GitHub Actions on cron)
+
+   * Fetch **Open‑Meteo** weather & **USGS earthquakes** every 5–10 min
+   * Normalize → call `POST /ingest/:source`
+6. **Risk rules + alerts**
+
+   * Implement rule‑based scoring → `GET /risk/now`
+   * Web Push setup (VAPID). Send alert when `level ≥ medium` & geo overlap
+   * Add “Test Alert” in UI
+
+### Week 3 — Forecast & analytics
+
+7. **ML prototype**
+
+   * Train small model on Colab, host on **Hugging Face Space**
+   * From API, call the Space endpoint for `GET /forecast/risk`
+8. **Dashboard & metrics**
+
+   * `/metrics` endpoint in API (ingest\_latency, alerts\_sent, failures)
+   * Plotly mini charts in Admin
+
+### Week 4 — Polish & reliability
+
+9. **Rate limiting & dedupe**
+
+   * One alert per event per user; updates when severity changes
+   * Per‑IP API limit (60 req/min)
+10. **Security & privacy**
+
+* Hash emails; encrypt phone (KMS‑like or libsodium)
+* CSP, HTTPS, no secrets in client, rotate keys
+* Simple RBAC for admin routes
+
+---
+
+## 8) Monitoring & ops
+
+**Metrics to expose (`/metrics`):**
+
+```
+ecoguard_ingest_runs_total{source="usgs"}  128
+ecoguard_ingest_failures_total{source="usgs"} 2
+ecoguard_risk_compute_ms_sum  9330
+ecoguard_alerts_sent_total{channel="webpush"} 412
+ecoguard_alerts_failed_total{channel="email"} 3
+ecoguard_ws_active_connections 57
+```
+
+**Alerts (for you, the developer):**
+
+* Ingest failure > 3 consecutive runs
+* Alert failure rate > 5% in 10 min
+* API p95 latency > 800ms
+
+---
+
+## 9) Security & privacy checklist
+
+* **PII minimization:** store only what you need; allow “Delete my data”.
+* **AuthN:** simple magic‑link for admin, or Cognito/Auth0 free.
+* **Transport:** HTTPS everywhere, HSTS.
+* **Secrets:** .env only on server; rotate API keys.
+* **Abuse controls:** IP rate limit, email/phone blacklist, CAPTCHA on subscribe.
+* **Legal:** Terms, Privacy, consent for notifications & location.
+
+---
+
+## 10) Testing plan (quick & practical)
+
+* **Unit:** risk functions, bbox/geo overlap, dedupe logic.
+* **Integration:** fake USGS/Open‑Meteo responses → ensure event normalization.
+* **E2E:** Cypress test: subscribe → simulate event → receive web push → UI shows alert.
+* **Load (light):** k6 hitting `/events` & `/risk/now` (free CI).
+
+---
+
+## 11) Demo script (5 minutes)
+
+1. **Open Home**: shows your location + “Low flood risk” card.
+2. **Subscribe** with 10km radius; click “Send Test Alert” → web push arrives.
+3. **Simulate earthquake** (admin → replay last USGS event) → pin drops on map; alert pops.
+4. **Forecast view**: run `/forecast/risk` for next 6h; show probability + explanation chips.
+5. **Metrics**: open Admin → show ingests, alerts\_sent, zero failures.
+
+---
+
+## 12) Deliverables for your FYP
+
+* **Working PWA** (Netlify/Vercel URL)
+* **Public API docs** (Markdown/Swagger snippet)
+* **Short design deck** (10 slides: problem → architecture → UX → results)
+* **Video demo** (2–3 mins screen recording)
+* **Appendix:** datasets, ethical/privacy notes, limitations & future work
+
+---
+
+## 13) “Future work” (talk track)
+
+* Add local gov CAP feeds; integrate river gauges.
+* Switch vector tiles for smoother heatmaps.
+* On‑device alerts with offline fallback.
+* Model ensembles; per‑neighborhood calibration.
+* Community reports (crowdsourced ground truth) with media upload + moderation.
+
+---
+
+### Want code starters?
+
+I can draft:
+
+* a minimal **Express API** with `/subscribe`, `/events`, `/risk/now`, WebSocket + MongoDB, and a `/metrics` endpoint, and
+* a **React PWA** scaffold with Leaflet map, Subscribe drawer, web push, and the status cards.
+
+Tell me which starter you want first (API or PWA), and I’ll paste a clean, copy‑ready template here.
+
+
+
+
+
+

@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: ecoguard-api
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URL
+        sync: false
+      - key: OPENWEATHER_API_KEY
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false
+      - key: INGEST_TOKEN
+        sync: false
+      - key: FRONTEND_URL
+        sync: false

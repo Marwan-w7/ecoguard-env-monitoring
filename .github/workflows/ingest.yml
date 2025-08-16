@@ -1,0 +1,121 @@
+name: Data Ingestion Pipeline
+
+on:
+  schedule:
+    # Run every 5 minutes for real-time data
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+    inputs:
+      source:
+        description: 'Data source to ingest'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - usgs
+          - eonet
+          - openweather
+          - openaq
+
+jobs:
+  ingest-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          npm ci --only=production
+
+      - name: Ingest USGS Earthquake Data
+        if: github.event.inputs.source == 'all' || github.event.inputs.source == 'usgs' || github.event.inputs.source == ''
+        run: |
+          curl -s -X POST "${{ secrets.API_BASE_URL }}/v1/ingest/usgs" \
+            -H "Authorization: Bearer ${{ secrets.INGEST_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            --max-time 30 \
+            --retry 3 \
+            --retry-delay 5
+        continue-on-error: true
+
+      - name: Ingest NASA EONET Data
+        if: github.event.inputs.source == 'all' || github.event.inputs.source == 'eonet' || github.event.inputs.source == ''
+        run: |
+          curl -s -X POST "${{ secrets.API_BASE_URL }}/v1/ingest/eonet" \
+            -H "Authorization: Bearer ${{ secrets.INGEST_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            --max-time 30 \
+            --retry 3 \
+            --retry-delay 5
+        continue-on-error: true
+
+      - name: Ingest OpenWeather Data
+        if: github.event.inputs.source == 'all' || github.event.inputs.source == 'openweather' || github.event.inputs.source == ''
+        run: |
+          curl -s -X POST "${{ secrets.API_BASE_URL }}/v1/ingest/openweather" \
+            -H "Authorization: Bearer ${{ secrets.INGEST_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            --max-time 30 \
+            --retry 3 \
+            --retry-delay 5
+        continue-on-error: true
+
+      - name: Ingest OpenAQ Air Quality Data
+        if: github.event.inputs.source == 'all' || github.event.inputs.source == 'openaq' || github.event.inputs.source == ''
+        run: |
+          curl -s -X POST "${{ secrets.API_BASE_URL }}/v1/ingest/openaq" \
+            -H "Authorization: Bearer ${{ secrets.INGEST_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            --max-time 30 \
+            --retry 3 \
+            --retry-delay 5
+        continue-on-error: true
+
+      - name: Health Check
+        run: |
+          curl -s "${{ secrets.API_BASE_URL }}/v1/status" \
+            --max-time 10 \
+            --retry 2
+
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "Data ingestion pipeline failed. Check logs for details."
+          # Add Slack/Discord notification here if needed
+
+  # Separate job for less frequent data sources
+  ingest-hourly:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 * * * *' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 5
+    
+    steps:
+      - name: Ingest Weather Forecast Data
+        run: |
+          curl -s -X POST "${{ secrets.API_BASE_URL }}/v1/ingest/forecast" \
+            -H "Authorization: Bearer ${{ secrets.INGEST_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            --max-time 30 \
+            --retry 3
+        continue-on-error: true
+
+      - name: Update Risk Scores
+        run: |
+          curl -s -X POST "${{ secrets.API_BASE_URL }}/v1/pipeline/risk/recompute" \
+            -H "Authorization: Bearer ${{ secrets.INGEST_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            --max-time 60 \
+            --retry 2
+        continue-on-error: true

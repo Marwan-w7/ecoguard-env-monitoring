@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Leaflet map styles */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+}
+
+/* Custom styles */
+.risk-card {
+  @apply bg-white rounded-lg shadow-md p-4 border-l-4;
+}
+
+.risk-low { @apply border-green-500; }
+.risk-moderate { @apply border-yellow-500; }
+.risk-high { @apply border-orange-500; }
+.risk-very-high { @apply border-red-500; }
+
+.alert-toast {
+  @apply fixed top-4 right-4 bg-red-600 text-white p-4 rounded-lg shadow-lg z-50;
+}
