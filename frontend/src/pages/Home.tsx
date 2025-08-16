@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
 import { LatLngTuple } from 'leaflet';
-import { AlertTriangle, Thermometer, Wind, Droplets } from 'lucide-react';
+// import { AlertTriangle, Thermometer, Wind, Droplets } from 'lucide-react';
 import { useNotifications } from '../hooks/useNotifications';
 import 'leaflet/dist/leaflet.css';
 
